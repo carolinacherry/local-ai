@@ -2,7 +2,7 @@
 
 Run Qwen3.5 entirely on your iPhone. No cloud. No API keys. No subscriptions.
 
-https://github.com/carolinacherry/local-ai/releases/download/v1.0.0/qwen.4b.demo.final.mov
+https://github.com/user-attachments/assets/63a70984-d895-4f31-821f-1fafa32a89e7
 
 > *iPhone 17 Pro, airplane mode, zero internet. 26 tok/s.*
 
