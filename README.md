@@ -12,7 +12,7 @@ Two years ago, GPT-4o cost $20/month and required a datacenter. Today, the same 
 
 > "According to benchmarks Qwen3.5 4B is as good as GPT 4o. GPT 4o came out ~2 years ago (May 2024). Qwen 3.5 4B runs easily on modern mobile devices. So the gap between frontier intelligence in a datacenter and running a model of equal quality on your iPhone could be 2-3 years."
 >
-> — [Awni Hannun](https://x.com/awnihannun/status/2030024849570288080), creator of MLX
+> — [Awni Hannun](https://x.com/awnihannun/status/2030024849570288080), co-creator of MLX
 
 ## Models
 
