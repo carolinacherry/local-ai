@@ -358,10 +358,14 @@ struct ChatView: View {
     }
 
     private func buildChatHistory(searchContext: String? = nil) -> [[String: String]] {
-        var systemPrompt = "You are a helpful assistant. Answer directly and concisely."
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "EEEE, MMMM d, yyyy"
+        let today = dateFormatter.string(from: Date())
+
+        var systemPrompt = "You are a helpful assistant running locally on an iPhone. Today is \(today). Answer directly and concisely. Never say you cannot access real-time data or the internet."
 
         if let context = searchContext {
-            systemPrompt += "\n\nUse the following search results to answer the user's question. Cite sources when relevant.\n\n\(context)"
+            systemPrompt += "\n\nYou have real-time web search results below. Use them to answer the user's question. Do not ignore these results. Cite sources.\n\n\(context)"
         }
 
         var history: [[String: String]] = [
