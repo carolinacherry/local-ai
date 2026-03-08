@@ -15,11 +15,12 @@ struct ChatView: View {
 
     @Binding var activeConversationId: UUID?
 
+    @StateObject private var speechRecognizer = SpeechRecognizer()
+
     @State private var messages: [ChatMessage] = []
     @State private var inputText = ""
     @State private var showSettings = false
     @State private var showHistory = false
-    @AppStorage("thinkingEnabled") private var thinkingEnabled = false
     @State private var isSearching = false
     @FocusState private var inputFocused: Bool
 
@@ -93,7 +94,7 @@ struct ChatView: View {
 
             Spacer()
 
-            HStack(spacing: 16) {
+            HStack(spacing: 0) {
                 Button {
                     saveCurrentConversation()
                     activeConversationId = nil
@@ -102,20 +103,25 @@ struct ChatView: View {
                     engine.cancelGeneration()
                 } label: {
                     Image(systemName: "square.and.pencil")
-                        .font(.system(size: 20))
+                        .font(.system(size: 16))
                         .foregroundStyle(.blue)
-                        .frame(width: 36, height: 36)
+                        .frame(width: 36, height: 32)
                 }
+
+                Divider()
+                    .frame(height: 16)
 
                 Button {
                     showSettings = true
                 } label: {
                     Image(systemName: "gearshape")
-                        .font(.system(size: 20))
+                        .font(.system(size: 16))
                         .foregroundStyle(.secondary)
-                        .frame(width: 36, height: 36)
+                        .frame(width: 36, height: 32)
                 }
             }
+            .background(Color(.systemGray6))
+            .clipShape(RoundedRectangle(cornerRadius: 10))
         }
         .padding(.horizontal, 16)
         .padding(.top, 8)
@@ -166,14 +172,14 @@ struct ChatView: View {
                         }
 
                         if engine.isGenerating {
-                            if engine.cleanOutput.isEmpty {
+                            if engine.output.isEmpty {
                                 ThinkingIndicator()
                                     .id("streaming")
                             } else {
                                 MessageBubble(
                                     message: ChatMessage(
                                         role: "assistant",
-                                        content: engine.cleanOutput,
+                                        content: engine.output,
                                         stats: nil
                                     )
                                 )
@@ -199,6 +205,15 @@ struct ChatView: View {
 
     private var inputBar: some View {
         HStack(spacing: 8) {
+            Button {
+                speechRecognizer.toggleRecording()
+            } label: {
+                Image(systemName: speechRecognizer.isRecording ? "mic.fill" : "mic")
+                    .font(.system(size: 16))
+                    .foregroundStyle(speechRecognizer.isRecording ? .red : .secondary)
+                    .frame(width: 30, height: 30)
+            }
+
             TextField("Message...", text: $inputText, axis: .vertical)
                 .lineLimit(1...4)
                 .font(.system(size: 15))
@@ -229,6 +244,14 @@ struct ChatView: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
+        .onChange(of: speechRecognizer.transcript) {
+            if !speechRecognizer.transcript.isEmpty {
+                inputText = speechRecognizer.transcript
+            }
+        }
+        .onAppear {
+            speechRecognizer.requestPermissions()
+        }
     }
 
     private var sendButtonColor: Color {
@@ -280,7 +303,7 @@ struct ChatView: View {
             isSearching = false
 
             let chatHistory = buildChatHistory(searchContext: searchContext)
-            engine.generate(messages: chatHistory, enableThinking: thinkingEnabled)
+            engine.generate(messages: chatHistory)
 
             while engine.isGenerating {
                 try? await Task.sleep(for: .milliseconds(100))
@@ -292,11 +315,9 @@ struct ChatView: View {
 
     private func finalizeAssistantMessage() {
         guard !engine.output.isEmpty else { return }
-        let clean = engine.cleanOutput
-        let content = clean.isEmpty ? engine.output : clean
         messages.append(ChatMessage(
             role: "assistant",
-            content: content,
+            content: engine.output,
             stats: engine.stats
         ))
         engine.output = ""
@@ -337,9 +358,7 @@ struct ChatView: View {
     }
 
     private func buildChatHistory(searchContext: String? = nil) -> [[String: String]] {
-        var systemPrompt = thinkingEnabled
-            ? "You are a helpful assistant."
-            : "You are a helpful assistant. Answer directly and concisely."
+        var systemPrompt = "You are a helpful assistant. Answer directly and concisely."
 
         if let context = searchContext {
             systemPrompt += "\n\nUse the following search results to answer the user's question. Cite sources when relevant.\n\n\(context)"

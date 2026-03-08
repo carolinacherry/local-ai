@@ -22,11 +22,6 @@ final class LLMEngine: ObservableObject {
     private var generateTask: Task<Void, Never>?
     private(set) var activeModel: ModelConfig?
 
-    /// Clean output: strips <think> tags for display
-    var cleanOutput: String {
-        stripThinkingTags(output)
-    }
-
     func loadModel(_ config: ModelConfig) async throws {
         isLoading = true
         loadingProgress = 0
@@ -47,7 +42,7 @@ final class LLMEngine: ObservableObject {
         activeModel = config
     }
 
-    func generate(messages: [[String: String]], enableThinking: Bool) {
+    func generate(messages: [[String: String]]) {
         guard let container = modelContainer else { return }
         guard !isGenerating else { return }
 
@@ -63,11 +58,9 @@ final class LLMEngine: ObservableObject {
             var tokenCount = 0
 
             do {
-                // Use container.perform to get access to tokenizer for enable_thinking
                 let stream: AsyncStream<Generation> = try await container.perform { (context: ModelContext) in
-                    // Apply chat template with enable_thinking parameter
                     let additionalContext: [String: Any] = [
-                        "enable_thinking": enableThinking
+                        "enable_thinking": false
                     ]
 
                     let promptTokens = try context.tokenizer.applyChatTemplate(
@@ -82,11 +75,10 @@ final class LLMEngine: ObservableObject {
 
                     let input = LMInput(tokens: MLXArray(promptTokens))
 
-                    let maxTokens = enableThinking ? 1200 : 512
                     let parameters = GenerateParameters(
-                        maxTokens: maxTokens,
-                        temperature: enableThinking ? 0.6 : 0.7,
-                        topP: enableThinking ? 0.95 : 0.8
+                        maxTokens: 512,
+                        temperature: 0.7,
+                        topP: 0.8
                     )
 
                     return try MLXLMCommon.generate(
@@ -108,7 +100,6 @@ final class LLMEngine: ObservableObject {
                         tokenCount += 1
                         output += text
 
-                        // Check for repetition every 20 tokens
                         if tokenCount % 20 == 0, let trimmed = detectRepetition(output) {
                             output = trimmed
                             stoppedByRepetition = true
@@ -153,20 +144,15 @@ final class LLMEngine: ObservableObject {
         isGenerating = false
     }
 
-    /// Detect repetition loops. Returns trimmed output if repetition found, nil otherwise.
     private func detectRepetition(_ text: String) -> String? {
-        let clean = stripThinkingTags(text)
-        guard clean.count > 60 else { return nil }
+        guard text.count > 60 else { return nil }
 
-        // Check if the last N characters repeat earlier in the text
-        // Try different window sizes (15-40 chars)
         for windowSize in [40, 30, 20, 15] {
-            guard clean.count > windowSize * 3 else { continue }
+            guard text.count > windowSize * 3 else { continue }
 
-            let suffix = String(clean.suffix(windowSize))
-            let searchArea = String(clean.dropLast(windowSize))
+            let suffix = String(text.suffix(windowSize))
+            let searchArea = String(text.dropLast(windowSize))
 
-            // Count occurrences of this suffix in the text
             var count = 0
             var searchFrom = searchArea.startIndex
             while let range = searchArea.range(of: suffix, range: searchFrom..<searchArea.endIndex) {
@@ -175,13 +161,11 @@ final class LLMEngine: ObservableObject {
                 if count >= 2 { break }
             }
 
-            // If the same chunk appears 3+ times total (2 in search + 1 suffix), it's repeating
             if count >= 2 {
-                // Trim to first occurrence + one repetition
-                if let firstRange = clean.range(of: suffix) {
-                    let afterFirst = clean[firstRange.upperBound...]
+                if let firstRange = text.range(of: suffix) {
+                    let afterFirst = text[firstRange.upperBound...]
                     if let secondRange = afterFirst.range(of: suffix) {
-                        return String(clean[..<secondRange.upperBound])
+                        return String(text[..<secondRange.upperBound])
                     }
                 }
                 return searchArea
@@ -189,37 +173,5 @@ final class LLMEngine: ObservableObject {
         }
 
         return nil
-    }
-
-    /// Strip <think>...</think> tags from output (Incept5 approach)
-    private func stripThinkingTags(_ text: String) -> String {
-        var result = text
-
-        // 1. Strip complete <think>...</think> blocks
-        let pattern = #"<think>[\s\S]*?</think>"#
-        result = result.replacingOccurrences(of: pattern, with: "", options: .regularExpression)
-
-        // 2. Handle orphaned </think> — keep content after it
-        if let closeRange = result.range(of: "</think>") {
-            let after = String(result[closeRange.upperBound...]).trimmingCharacters(in: .whitespacesAndNewlines)
-            if after.count >= 2 {
-                result = after
-            } else {
-                result = result.replacingOccurrences(of: "</think>", with: "")
-            }
-        }
-
-        // 3. Handle orphaned <think> — keep content before it (still streaming)
-        if let openRange = result.range(of: "<think>") {
-            let before = String(result[..<openRange.lowerBound]).trimmingCharacters(in: .whitespacesAndNewlines)
-            if before.count >= 2 {
-                result = before
-            } else {
-                // Still in thinking phase, return empty
-                return ""
-            }
-        }
-
-        return result.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }

@@ -3,14 +3,14 @@ import SwiftUI
 struct SettingsView: View {
     @EnvironmentObject var modelManager: ModelManager
     @Environment(\.dismiss) var dismiss
-    @AppStorage("thinkingEnabled") private var thinkingEnabled = false
+    @AppStorage("appearanceMode") private var appearanceMode: Int = 0 // 0=system, 1=light, 2=dark
     @State private var braveAPIKey: String = WebSearchService.loadAPIKey() ?? ""
 
     var body: some View {
         NavigationStack {
             List {
                 activeModelSection
-                chatSection
+                appearanceSection
                 modelLibrarySection
                 webSearchSection
                 aboutSection
@@ -48,13 +48,14 @@ struct SettingsView: View {
         }
     }
 
-    private var chatSection: some View {
-        Section {
-            Toggle("Thinking Mode", isOn: $thinkingEnabled)
-        } header: {
-            Text("Chat")
-        } footer: {
-            Text("When on, the model reasons step-by-step before answering. Uses more tokens but improves quality on complex questions.")
+    private var appearanceSection: some View {
+        Section("Appearance") {
+            Picker("Theme", selection: $appearanceMode) {
+                Text("System").tag(0)
+                Text("Light").tag(1)
+                Text("Dark").tag(2)
+            }
+            .pickerStyle(.segmented)
         }
     }
 
@@ -87,7 +88,7 @@ struct SettingsView: View {
         Section("About") {
             LabeledContent("Version", value: "1.0.0")
             LabeledContent("Built by", value: "@carolinacherry")
-            Link("GitHub", destination: URL(string: "https://github.com/carolinacherry/4B")!)
+            Link("GitHub", destination: URL(string: "https://github.com/carolinacherry/local-ai")!)
         }
     }
 }

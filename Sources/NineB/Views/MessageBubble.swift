@@ -1,58 +1,8 @@
 import SwiftUI
 
-struct ParsedContent {
-    let thinking: String?
-    let response: String
-
-    init(raw: String) {
-        // Strip <think>...</think> blocks
-        let thinkPattern = #"<think>([\s\S]*?)</think>"#
-        if let match = raw.range(of: thinkPattern, options: .regularExpression) {
-            let thinkTag = raw[match]
-            let inner = thinkTag
-                .replacingOccurrences(of: "<think>", with: "")
-                .replacingOccurrences(of: "</think>", with: "")
-                .trimmingCharacters(in: .whitespacesAndNewlines)
-            thinking = inner.isEmpty ? nil : inner
-
-            var remainder = raw
-            remainder.removeSubrange(match)
-            response = remainder.trimmingCharacters(in: .whitespacesAndNewlines)
-        } else if raw.contains("<think>") {
-            let parts = raw.components(separatedBy: "<think>")
-            let before = parts[0].trimmingCharacters(in: .whitespacesAndNewlines)
-            let thinkContent = parts.dropFirst().joined(separator: "")
-                .trimmingCharacters(in: .whitespacesAndNewlines)
-            thinking = thinkContent.isEmpty ? nil : thinkContent
-            response = before
-        } else {
-            // Also detect plain-text reasoning and strip it
-            var cleaned = raw
-            let reasoningPatterns = [
-                #"(?s)Thinking Process:.*?(?=\n\n[A-Z]|\n\n\*\*[^*]|\z)"#,
-                #"(?s)^Thinking:.*?(?=\n\n[A-Z]|\n\n\*\*[^*]|\z)"#,
-            ]
-            for pattern in reasoningPatterns {
-                cleaned = cleaned.replacingOccurrences(of: pattern, with: "", options: .regularExpression)
-            }
-            let trimmed = cleaned.trimmingCharacters(in: .whitespacesAndNewlines)
-
-            // If we stripped reasoning and there's content left, use it
-            if trimmed != raw.trimmingCharacters(in: .whitespacesAndNewlines) {
-                thinking = nil
-                response = trimmed
-            } else {
-                thinking = nil
-                response = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-            }
-        }
-    }
-}
-
 struct MessageBubble: View {
     let message: ChatMessage
 
-    @State private var showThinking = false
     @State private var copied = false
 
     var body: some View {
@@ -82,49 +32,15 @@ struct MessageBubble: View {
     }
 
     private var assistantBubble: some View {
-        let parsed = ParsedContent(raw: message.content)
-
-        return VStack(alignment: .leading, spacing: 4) {
-            if let thinking = parsed.thinking {
-                Button {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        showThinking.toggle()
-                    }
-                } label: {
-                    HStack(spacing: 3) {
-                        Image(systemName: "brain")
-                            .font(.system(size: 10))
-                        Text(showThinking ? "Hide thinking" : "Show thinking")
-                            .font(.system(size: 11))
-                        Image(systemName: showThinking ? "chevron.up" : "chevron.down")
-                            .font(.system(size: 8))
-                    }
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(Color(.systemGray6))
-                    .clipShape(Capsule())
-                }
-
-                if showThinking {
-                    Text(thinking)
-                        .font(.system(size: 12))
-                        .foregroundStyle(.secondary)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
-                        .background(Color(.systemGray6))
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                }
-            }
-
-            if !parsed.response.isEmpty {
-                Text(LocalizedStringKey(parsed.response))
+        VStack(alignment: .leading, spacing: 4) {
+            if !message.content.isEmpty {
+                Text(LocalizedStringKey(message.content))
                     .font(.system(size: 15))
                     .textSelection(.enabled)
 
                 HStack(spacing: 8) {
                     Button {
-                        UIPasteboard.general.string = parsed.response
+                        UIPasteboard.general.string = message.content
                         withAnimation(.easeInOut(duration: 0.2)) { copied = true }
                         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
                             withAnimation(.easeInOut(duration: 0.2)) { copied = false }
@@ -144,14 +60,6 @@ struct MessageBubble: View {
                     if let stats = message.stats {
                         StatsBar(stats: stats)
                     }
-                }
-            } else if parsed.thinking != nil {
-                HStack(spacing: 5) {
-                    ProgressView()
-                        .scaleEffect(0.6)
-                    Text("Thinking...")
-                        .font(.system(size: 12))
-                        .foregroundStyle(.secondary)
                 }
             }
         }

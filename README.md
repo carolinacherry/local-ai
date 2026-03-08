@@ -28,11 +28,12 @@ All models are 4-bit quantized via [MLX](https://github.com/ml-explore/mlx-swift
 ## Features
 
 - 100% on-device inference via Apple MLX
-- Thinking mode with `enable_thinking` template variable
 - Web search via Brave Search API (optional, API key stored in Keychain)
 - Conversation persistence across app restarts
 - Repetition detection and auto-stop
 - Model switcher with download manager
+- Voice input via on-device speech recognition
+- Dark mode toggle (System / Light / Dark)
 - Haptic feedback on send and generation complete
 - Markdown rendering, copy button, tok/s stats
 
@@ -78,9 +79,9 @@ Settings → enter your [Brave Search API key](https://brave.com/search/api/) (f
 | Component | Implementation |
 |-----------|---------------|
 | Inference | MLX Swift (`ml-explore/mlx-swift-lm`) |
-| Thinking control | `enable_thinking` via `applyChatTemplate(additionalContext:)` |
 | Model download | HuggingFace Swift Transformers |
 | Web search | Brave Search API with app-driven prefetch |
+| Voice input | iOS Speech framework (on-device) |
 | API key storage | iOS Keychain |
 | Persistence | JSON in Documents directory |
 | UI | SwiftUI |

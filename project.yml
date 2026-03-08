@@ -25,6 +25,8 @@ targets:
         GENERATE_INFOPLIST_FILE: "YES"
         CODE_SIGN_STYLE: Automatic
         INFOPLIST_KEY_UILaunchScreen_Generation: "YES"
+        INFOPLIST_KEY_NSMicrophoneUsageDescription: "4B uses the microphone for voice input to chat."
+        INFOPLIST_KEY_NSSpeechRecognitionUsageDescription: "4B uses on-device speech recognition to convert your voice to text."
     dependencies:
       - package: mlx-swift-lm
         product: MLXLLM

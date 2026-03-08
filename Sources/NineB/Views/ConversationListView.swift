@@ -43,7 +43,11 @@ struct ConversationListView: View {
                         }
                         .onDelete { indexSet in
                             for index in indexSet {
-                                store.delete(store.conversations[index])
+                                let conv = store.conversations[index]
+                                if activeConversationId == conv.id {
+                                    activeConversationId = nil
+                                }
+                                store.delete(conv)
                             }
                         }
                     }
